@@ -1,0 +1,27 @@
+---
+version: "1.2.2"
+slug: naim_bridge
+name: Naim Bridge
+description: Bridge TCP pour Naim UnitiQute 2
+url: https://github.com/KoalaLyon/addon-naim-bridge
+arch:
+  - aarch64
+image: homeassistant/{arch}-addon-base-python
+startup: application
+boot: auto
+ports:
+  8765/tcp: 8765
+options:
+  qute_ip: "192.168.1.108"
+  volume_cinema: 45
+  volume_spotify: 30
+  spotify_client_id: ""
+  spotify_client_secret: ""
+  spotify_device_name: "Qute"
+schema:
+  qute_ip: str
+  volume_cinema: int
+  volume_spotify: int
+  spotify_client_id: str
+  spotify_client_secret: str
+  spotify_device_name: str
