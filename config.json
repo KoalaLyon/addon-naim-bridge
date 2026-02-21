@@ -1,8 +1,9 @@
 {
   "name": "Naim Bridge",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "slug": "naim_bridge",
   "description": "Bridge TCP pour Naim UnitiQute 2",
+  "image": "ghcr.io/home-assistant/{arch}-base-python",
   "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
   "startup": "application",
   "boot": "auto",
