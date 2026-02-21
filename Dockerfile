@@ -1,16 +1,28 @@
-ARG BUILD_FROM=ghcr.io/home-asssitant/aarch64-base:latest
+# syntax=docker/dockerfile:1
+
+########################################
+# Base image
+########################################
+ARG BUILD_FROM=ghcr.io/home-assistant/aarch64-base:latest
 FROM $BUILD_FROM
 
-# Installation Python et dépendances
-RUN apk add --no-cache python3 py3-pip
+########################################
+# Copy addon files
+########################################
+COPY rootfs/ /
 
-# Copie des fichiers
-COPY rootfs /
+########################################
+# Install dependencies
+########################################
+RUN apk add --no-cache python3 py3-pip jq \
+    && pip3 install --no-cache-dir --break-system-packages -r /usr/bin/requirements.txt
 
-# Installation des dépendances Python
-RUN pip3 install --no-cache-dir --break-system-packages -r /usr/bin/requirements.txt
-
+########################################
 # Permissions
+########################################
 RUN chmod a+x /usr/bin/run.sh
 
-CMD ["/usr/bin/run.sh"]
+########################################
+# Supervisor entrypoint
+########################################
+CMD [ "/usr/bin/run.sh" ]
