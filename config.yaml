@@ -6,6 +6,9 @@ description: Bridge TCP pour Naim UnitiQute 2
 url: https://github.com/KoalaLyon/addon-naim-bridge
 arch:
   - aarch64
+  - amd64
+# init: false = processus unique, compatible avec l'écosystème s6-overlay de HA
+init: false
 startup: application
 boot: auto
 ports:

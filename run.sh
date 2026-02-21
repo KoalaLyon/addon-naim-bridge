@@ -14,4 +14,4 @@ if [ -f "$CONFIG_FILE" ]; then
 fi
 
 echo "Démarrage Naim Bridge sur ${QUTE_IP}..."
-exec python -u bridge.py
+exec python3 -u bridge.py
