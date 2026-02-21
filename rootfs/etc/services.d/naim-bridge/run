@@ -1,4 +1,6 @@
-#!/usr/bin/with-contenv bashio
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+bashio::log.info "Démarrage Naim Bridge..."
 
 export QUTE_IP=$(bashio::config 'qute_ip')
 export VOLUME_CINEMA=$(bashio::config 'volume_cinema')
@@ -7,8 +9,7 @@ export SPOTIFY_CLIENT_ID=$(bashio::config 'spotify_client_id')
 export SPOTIFY_CLIENT_SECRET=$(bashio::config 'spotify_client_secret')
 export SPOTIFY_DEVICE_NAME=$(bashio::config 'spotify_device_name')
 
-bashio::log.info "Demarrage Naim Bridge sur ${QUTE_IP}"
+bashio::log.info "Qute IP: ${QUTE_IP}"
 
-cd /usr/bin
-bashio::log.info "Lancement Python..."
+cd /usr/bin || bashio::exit.nok "Cannot change to /usr/bin"
 exec python3 -u bridge.py
