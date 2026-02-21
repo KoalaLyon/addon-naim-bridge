@@ -10,4 +10,5 @@ export SPOTIFY_DEVICE_NAME=$(bashio::config 'spotify_device_name')
 bashio::log.info "Demarrage Naim Bridge sur ${QUTE_IP}"
 
 cd /usr/bin
-exec python3 bridge.py
+bashio::log.info "Lancement Python..."
+exec python3 -u bridge.py
