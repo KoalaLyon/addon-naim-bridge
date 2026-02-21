@@ -1,4 +1,0 @@
-#!/usr/bin/with-contenv bashio
-bashio::log.info "Test service démarré"
-exec sleep infinity
-
