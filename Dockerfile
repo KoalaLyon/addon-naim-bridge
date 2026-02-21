@@ -1,4 +1,5 @@
-FROM ghcr.io/home-assistant/aarch64-base-python:latest
+ARG BUILD_FROM
+FROM $BUILD_FROM
 
 RUN pip3 install --no-cache-dir flask==3.0.0 spotipy==2.24.0
 
