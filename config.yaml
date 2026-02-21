@@ -1,13 +1,11 @@
 ---
-version: "1.2.5"
+version: "1.2.6"
 slug: naim_bridge
 name: Naim Bridge
 description: Bridge TCP pour Naim UnitiQute 2
 url: https://github.com/KoalaLyon/addon-naim-bridge
 arch:
   - aarch64
-build_from:
-  aarch64: "ghcr.io/home-assistant/aarch64-base-python:latest"
 startup: application
 boot: auto
 ports:
