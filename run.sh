@@ -1,12 +1,17 @@
-#!/usr/bin/with-contenv bashio
+#!/bin/bash
+set -e
 
-export QUTE_IP=$(bashio::config 'qute_ip')
-export VOLUME_CINEMA=$(bashio::config 'volume_cinema')
-export VOLUME_SPOTIFY=$(bashio::config 'volume_spotify')
-export SPOTIFY_CLIENT_ID=$(bashio::config 'spotify_client_id')
-export SPOTIFY_CLIENT_SECRET=$(bashio::config 'spotify_client_secret')
-export SPOTIFY_DEVICE_NAME=$(bashio::config 'spotify_device_name')
+# Lecture de la config HA
+CONFIG_FILE="/data/options.json"
 
-bashio::log.info "Démarrage Naim Bridge..."
-cd /usr/bin
-exec python3 -u bridge.py
+if [ -f "$CONFIG_FILE" ]; then
+    export QUTE_IP=$(jq -r '.qute_ip' $CONFIG_FILE)
+    export VOLUME_CINEMA=$(jq -r '.volume_cinema' $CONFIG_FILE)
+    export VOLUME_SPOTIFY=$(jq -r '.volume_spotify' $CONFIG_FILE)
+    export SPOTIFY_CLIENT_ID=$(jq -r '.spotify_client_id' $CONFIG_FILE)
+    export SPOTIFY_CLIENT_SECRET=$(jq -r '.spotify_client_secret' $CONFIG_FILE)
+    export SPOTIFY_DEVICE_NAME=$(jq -r '.spotify_device_name' $CONFIG_FILE)
+fi
+
+echo "Démarrage Naim Bridge sur ${QUTE_IP}..."
+exec python -u bridge.py
