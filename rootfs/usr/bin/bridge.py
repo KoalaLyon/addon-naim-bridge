@@ -369,7 +369,7 @@ class NaimBridge:
         await self.wake_if_needed()
         await self._send_nvm("*NVM GETPREAMP")
         await self._send_nvm("*NVM GETBRIEFNP")
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(1.0)
         with state_lock:
             return dict(state)
 
@@ -474,7 +474,7 @@ def start_asyncio():
     loop.run_until_complete(bridge.connect())
 
 if __name__ == "__main__":
-    log.info("Naim Bridge v1.2")
+    log.info("Naim Bridge v1.3")
     log.info("Veille apres {}s".format(IDLE_TIMEOUT))
     t = Thread(target=start_asyncio, daemon=True)
     t.start()
