@@ -61,6 +61,11 @@ def spotify_transfer():
             return False
         log.info("Transfert Spotify vers '{}'".format(target["name"]))
         sp.transfer_playback(device_id=target["id"], force_play=True)
+        # Si rien ne jouait, start_playback sans context reprend la dernière lecture
+        try:
+            sp.start_playback(device_id=target["id"])
+        except Exception:
+            pass  # Rien à reprendre, le transfer suffit
         return True
     except Exception as e:
         log.error("Erreur Spotify : {}".format(e))
