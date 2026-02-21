@@ -6,7 +6,6 @@ description: Bridge TCP pour Naim UnitiQute 2
 url: https://github.com/KoalaLyon/addon-naim-bridge
 arch:
   - aarch64
-image: homeassistant/{arch}-addon-base-python
 startup: application
 boot: auto
 ports:
