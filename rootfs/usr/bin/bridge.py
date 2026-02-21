@@ -47,26 +47,36 @@ def get_spotify():
         open_browser=False,
     ))
 
+def _find_spotify_device(devices):
+    """Trouve le Qute dans la liste Spotify (match exact ou partiel)."""
+    config_name = SPOTIFY_DEVICE_NAME.lower()
+    for d in devices.get("devices", []):
+        dev_name = (d.get("name") or "").lower()
+        if dev_name == config_name or config_name in dev_name or dev_name in config_name:
+            return d
+    return None
+
+
 def spotify_transfer():
     try:
         sp = get_spotify()
-        devices = sp.devices()
-        target = None
-        for d in devices["devices"]:
-            if d["name"].lower() == SPOTIFY_DEVICE_NAME.lower():
-                target = d
-                break
-        if not target:
-            log.warning("Appareil Spotify non trouve")
-            return False
-        log.info("Transfert Spotify vers '{}'".format(target["name"]))
-        sp.transfer_playback(device_id=target["id"], force_play=True)
-        # Si rien ne jouait, start_playback sans context reprend la dernière lecture
-        try:
-            sp.start_playback(device_id=target["id"])
-        except Exception:
-            pass  # Rien à reprendre, le transfer suffit
-        return True
+        for attempt in range(3):
+            devices = sp.devices()
+            target = _find_spotify_device(devices)
+            if target:
+                log.info("Transfert Spotify vers '{}'".format(target["name"]))
+                sp.transfer_playback(device_id=target["id"], force_play=True)
+                try:
+                    sp.start_playback(device_id=target["id"])
+                except Exception:
+                    pass
+                return True
+            if attempt < 2:
+                log.info("Qute pas encore visible (tentative {}/3), nouvel essai dans 2s...".format(attempt + 1))
+                time.sleep(2)
+        names = [d.get("name", "?") for d in devices.get("devices", [])]
+        log.warning("Appareil '{}' non trouve. Appareils visibles: {}".format(SPOTIFY_DEVICE_NAME, names))
+        return False
     except Exception as e:
         log.error("Erreur Spotify : {}".format(e))
         return False
@@ -74,14 +84,16 @@ def spotify_transfer():
 def spotify_play_daylist():
     try:
         sp = get_spotify()
-        devices = sp.devices()
-        target = None
-        for d in devices["devices"]:
-            if d["name"].lower() == SPOTIFY_DEVICE_NAME.lower():
-                target = d
+        for attempt in range(3):
+            devices = sp.devices()
+            target = _find_spotify_device(devices)
+            if target:
                 break
+            if attempt < 2:
+                time.sleep(2)
         if not target:
-            log.warning("Appareil Spotify non trouve")
+            names = [d.get("name", "?") for d in devices.get("devices", [])]
+            log.warning("Appareil '{}' non trouve. Appareils visibles: {}".format(SPOTIFY_DEVICE_NAME, names))
             return False
         log.info("Lecture Daylist sur Qute")
         sp.start_playback(
@@ -374,7 +386,7 @@ class NaimBridge:
         await self.wake_if_needed()
         await self._send_nvm("*NVM GETPREAMP")
         await self._send_nvm("*NVM GETBRIEFNP")
-        await asyncio.sleep(1.0)
+        await asyncio.sleep(1.0)  # Laisse le temps au Naim de répondre avec les métadonnées
         with state_lock:
             return dict(state)
 
@@ -389,6 +401,8 @@ class NaimBridge:
         await self.set_mute(False)
         await self.set_input("SPOTIFY")
         await self.set_volume(VOLUME_SPOTIFY)
+        # Délai pour que le Qute s'enregistre comme appareil Spotify Connect
+        await asyncio.sleep(5)
         ev_loop = asyncio.get_event_loop()
         await ev_loop.run_in_executor(None, spotify_transfer)
 
@@ -397,6 +411,7 @@ class NaimBridge:
         await self.set_mute(False)
         await self.set_input("SPOTIFY")
         await self.set_volume(VOLUME_SPOTIFY)
+        await asyncio.sleep(5)
         ev_loop = asyncio.get_event_loop()
         await ev_loop.run_in_executor(None, spotify_play_daylist)
 
@@ -408,7 +423,7 @@ def run_coroutine(coro):
     bridge.reset_idle_timer()
     future = asyncio.run_coroutine_threadsafe(coro, loop)
     try:
-        future.result(timeout=15)
+        future.result(timeout=25)
         return True
     except Exception as e:
         log.error("Erreur : {}".format(e))
@@ -467,7 +482,7 @@ def route_index():
         sleeping = bridge.should_sleep
     return jsonify({
         "name": "Naim Bridge",
-        "version": "1.2",
+        "version": "1.4",
         "connected": connected,
         "sleeping": sleeping,
     })
@@ -479,7 +494,7 @@ def start_asyncio():
     loop.run_until_complete(bridge.connect())
 
 if __name__ == "__main__":
-    log.info("Naim Bridge v1.3")
+    log.info("Naim Bridge v1.4")
     log.info("Veille apres {}s".format(IDLE_TIMEOUT))
     t = Thread(target=start_asyncio, daemon=True)
     t.start()
