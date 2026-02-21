@@ -3,7 +3,7 @@ FROM python:3.11-alpine
 WORKDIR /app
 
 # Installation des dépendances système
-RUN apk add --no-cache bash
+RUN apk add --no-cache bash jq
 
 # Copie des fichiers
 COPY rootfs/usr/bin/bridge.py .
