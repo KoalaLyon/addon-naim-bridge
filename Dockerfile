@@ -1,4 +1,4 @@
-ARG BUILD_FROM
+ARG BUILD_FROM=ghcr.io/home-asssitant/aarch64-base:latest
 FROM $BUILD_FROM
 
 # Installation Python et dépendances
