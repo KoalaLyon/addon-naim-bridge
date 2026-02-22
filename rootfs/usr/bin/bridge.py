@@ -361,7 +361,7 @@ class NaimBridge:
         await asyncio.sleep(0.2)
         await self._send_nvm("*NVM GETPRESETBLK 1 40")
         await asyncio.sleep(0.5)
-        await self._send(xml_command("GetNowPlaying")
+        await self._send(xml_command("GetNowPlaying"))
         await asyncio.sleep(0.3)
 
     async def _receive_loop(self):
