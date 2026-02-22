@@ -328,51 +328,51 @@ class NaimBridge:
             self._process_incoming(text)
     
     def _parse_get_now_playing(self, xml_text):
-    try:
-        root = ET.fromstring(xml_text)
-        if root.attrib.get("name") != "GetNowPlaying":
-            return
+        try:
+            root = ET.fromstring(xml_text)
+            if root.attrib.get("name") != "GetNowPlaying":
+                return
         
-        def get_item(parent, name):
-            for item in parent.findall("item"):
-                if item.attrib.get("name") == name:
-                    return item
-            return None
+            def get_item(parent, name):
+                for item in parent.findall("item"):
+                    if item.attrib.get("name") == name:
+                        return item
+                return None
 
-        map_root = root.find("map")
+            map_root = root.find("map")
         
-        play_time = get_item(map_root, "play_time")
-        track_time = get_item(map_root, "track_time")
-        title = get_item(map_root, "title")
+            play_time = get_item(map_root, "play_time")
+            track_time = get_item(map_root, "track_time")
+            title = get_item(map_root, "title")
         
-        metadata = get_item(map_root, "metadata")
-        artist, album = "", ""
-        if metadata is not None:
-            meta_map = metadata.find("map")
-            if meta_map is not None:
-                a = get_item(meta_map, "artist")
-                al = get_item(meta_map, "album")
-                artist = a.attrib.get("string", "") if a is not None else ""
-                album = al.attrib.get("string", "") if al is not None else ""
+            metadata = get_item(map_root, "metadata")
+            artist, album = "", ""
+            if metadata is not None:
+                meta_map = metadata.find("map")
+                if meta_map is not None:
+                    a = get_item(meta_map, "artist")
+                    al = get_item(meta_map, "album")
+                    artist = a.attrib.get("string", "") if a is not None else ""
+                    album = al.attrib.get("string", "") if al is not None else ""
 
-        with state_lock:
-            if play_time is not None:
-                state["position"] = int(play_time.attrib.get("int", 0))
-            if track_time is not None:
-                state["duration"] = int(track_time.attrib.get("int", 0))
-            if title is not None:
-                state["title"] = title.attrib.get("string", "")
-            if artist:
-                state["artist"] = artist
-            if album:
-                state["album"] = album
+            with state_lock:
+                if play_time is not None:
+                    state["position"] = int(play_time.attrib.get("int", 0))
+                if track_time is not None:
+                    state["duration"] = int(track_time.attrib.get("int", 0))
+                if title is not None:
+                    state["title"] = title.attrib.get("string", "")
+                if artist:
+                    state["artist"] = artist
+                if album:
+                    state["album"] = album
                 
-        log.info("NowPlaying pos={} dur={} title={} artist={}".format(
-            state.get("position"), state.get("duration"), 
-            state.get("title"), state.get("artist")
-        ))
-    except Exception as e:
-        log.error("Erreur parse GetNowPlaying: {}".format(e))
+            log.info("NowPlaying pos={} dur={} title={} artist={}".format(
+                state.get("position"), state.get("duration"), 
+                state.get("title"), state.get("artist")
+            ))
+        except Exception as e:
+            log.error("Erreur parse GetNowPlaying: {}".format(e))
         
     def _process_incoming(self, text):
         self._recv_buf += text
