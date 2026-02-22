@@ -165,53 +165,6 @@ def parse_nvm_viewstate(line):
         with state_lock:
             state["transport"] = parts[2]
 
-def _parse_get_now_playing(self, xml_text):
-    try:
-        root = ET.fromstring(xml_text)
-        if root.attrib.get("name") != "GetNowPlaying":
-            return
-        
-        def get_item(parent, name):
-            for item in parent.findall("item"):
-                if item.attrib.get("name") == name:
-                    return item
-            return None
-
-        map_root = root.find("map")
-        
-        play_time = get_item(map_root, "play_time")
-        track_time = get_item(map_root, "track_time")
-        title = get_item(map_root, "title")
-        
-        metadata = get_item(map_root, "metadata")
-        artist, album = "", ""
-        if metadata is not None:
-            meta_map = metadata.find("map")
-            if meta_map is not None:
-                a = get_item(meta_map, "artist")
-                al = get_item(meta_map, "album")
-                artist = a.attrib.get("string", "") if a is not None else ""
-                album = al.attrib.get("string", "") if al is not None else ""
-
-        with state_lock:
-            if play_time is not None:
-                state["position"] = int(play_time.attrib.get("int", 0))
-            if track_time is not None:
-                state["duration"] = int(track_time.attrib.get("int", 0))
-            if title is not None:
-                state["title"] = title.attrib.get("string", "")
-            if artist:
-                state["artist"] = artist
-            if album:
-                state["album"] = album
-                
-        log.info("NowPlaying pos={} dur={} title={} artist={}".format(
-            state.get("position"), state.get("duration"), 
-            state.get("title"), state.get("artist")
-        ))
-    except Exception as e:
-        log.error("Erreur parse GetNowPlaying: {}".format(e))
-
 def parse_nvm_briefnp(line):
     parts = line.strip().split()
     if len(parts) >= 3:
@@ -347,7 +300,7 @@ class NaimBridge:
         await asyncio.sleep(0.2)
         await self._send_nvm("*NVM GETVIEWSTATE")
         await asyncio.sleep(0.2)
-        await self._send(xml_command("GetNowPlaying"))
+        await self._send("GetNowPlaying")
         await asyncio.sleep(0.2)
         await self._send_nvm("*NVM GETPREAMP")
         await asyncio.sleep(0.2)
@@ -373,14 +326,61 @@ class NaimBridge:
             with state_lock:
                 state["last_seen"] = time.time()
             self._process_incoming(text)
+    
+    def _parse_get_now_playing(self, xml_text):
+    try:
+        root = ET.fromstring(xml_text)
+        if root.attrib.get("name") != "GetNowPlaying":
+            return
+        
+        def get_item(parent, name):
+            for item in parent.findall("item"):
+                if item.attrib.get("name") == name:
+                    return item
+            return None
 
+        map_root = root.find("map")
+        
+        play_time = get_item(map_root, "play_time")
+        track_time = get_item(map_root, "track_time")
+        title = get_item(map_root, "title")
+        
+        metadata = get_item(map_root, "metadata")
+        artist, album = "", ""
+        if metadata is not None:
+            meta_map = metadata.find("map")
+            if meta_map is not None:
+                a = get_item(meta_map, "artist")
+                al = get_item(meta_map, "album")
+                artist = a.attrib.get("string", "") if a is not None else ""
+                album = al.attrib.get("string", "") if al is not None else ""
+
+        with state_lock:
+            if play_time is not None:
+                state["position"] = int(play_time.attrib.get("int", 0))
+            if track_time is not None:
+                state["duration"] = int(track_time.attrib.get("int", 0))
+            if title is not None:
+                state["title"] = title.attrib.get("string", "")
+            if artist:
+                state["artist"] = artist
+            if album:
+                state["album"] = album
+                
+        log.info("NowPlaying pos={} dur={} title={} artist={}".format(
+            state.get("position"), state.get("duration"), 
+            state.get("title"), state.get("artist")
+        ))
+    except Exception as e:
+        log.error("Erreur parse GetNowPlaying: {}".format(e))
+        
     def _process_incoming(self, text):
         self._recv_buf += text
 
         # Parser les réponses XML (GetNowPlaying, etc.)
         xml_pattern = re.compile(r'<reply[^>]*>.*?</reply>', re.DOTALL)
         for xml_match in xml_pattern.findall(self._recv_buf):
-            self._parse_get_now_aying(xml_match)
+            self._parse_get_now_playing(xml_match)
         
         pattern = re.compile(r'<base64>(.*?)</base64>', re.DOTALL)
         matches = pattern.findall(self._recv_buf)
@@ -407,7 +407,7 @@ class NaimBridge:
             last_end = self._recv_buf.rfind("</base64>")
             if last_end != -1:
                 self._recv_buf = self._recv_buf[last_end + 9:]
-
+    
     async def _ping_loop(self):
         while True:
             await asyncio.sleep(HEARTBEAT_INTERVAL)
