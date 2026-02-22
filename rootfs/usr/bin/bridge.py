@@ -13,6 +13,7 @@ from threading import Thread, Event, Lock
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from flask import Flask, jsonify
+import xml.etree.ElementTree as ET
 
 # Configuration depuis variables d'environnement
 QUTE_IP = os.getenv('QUTE_IP', '192.168.1.108')
@@ -55,7 +56,6 @@ def _find_spotify_device(devices):
         if dev_name == config_name or config_name in dev_name or dev_name in config_name:
             return d
     return None
-
 
 def spotify_transfer():
     try:
@@ -115,6 +115,10 @@ state = {
     "title": "",
     "last_seen": None,
     "last_command": None,
+    "position": 0,
+    "duration": 0,
+    "artist": "",
+    "album": "",
 }
 state_lock = Lock()
 
@@ -160,6 +164,53 @@ def parse_nvm_viewstate(line):
     if len(parts) >= 3:
         with state_lock:
             state["transport"] = parts[2]
+
+def _parse_get_now_playing(self, xml_text):
+    try:
+        root = ET.fromstring(xml_text)
+        if root.attrib.get("name") != "GetNowPlaying":
+            return
+        
+        def get_item(parent, name):
+            for item in parent.findall("item"):
+                if item.attrib.get("name") == name:
+                    return item
+            return None
+
+        map_root = root.find("map")
+        
+        play_time = get_item(map_root, "play_time")
+        track_time = get_item(map_root, "track_time")
+        title = get_item(map_root, "title")
+        
+        metadata = get_item(map_root, "metadata")
+        artist, album = "", ""
+        if metadata is not None:
+            meta_map = metadata.find("map")
+            if meta_map is not None:
+                a = get_item(meta_map, "artist")
+                al = get_item(meta_map, "album")
+                artist = a.attrib.get("string", "") if a is not None else ""
+                album = al.attrib.get("string", "") if al is not None else ""
+
+        with state_lock:
+            if play_time is not None:
+                state["position"] = int(play_time.attrib.get("int", 0))
+            if track_time is not None:
+                state["duration"] = int(track_time.attrib.get("int", 0))
+            if title is not None:
+                state["title"] = title.attrib.get("string", "")
+            if artist:
+                state["artist"] = artist
+            if album:
+                state["album"] = album
+                
+        log.info("NowPlaying pos={} dur={} title={} artist={}".format(
+            state.get("position"), state.get("duration"), 
+            state.get("title"), state.get("artist")
+        ))
+    except Exception as e:
+        log.error("Erreur parse GetNowPlaying: {}".format(e))
 
 def parse_nvm_briefnp(line):
     parts = line.strip().split()
@@ -325,6 +376,12 @@ class NaimBridge:
 
     def _process_incoming(self, text):
         self._recv_buf += text
+
+        # Parser les réponses XML (GetNowPlaying, etc.)
+        xml_pattern = re.compile(r'<reply[^>]*>.*?</reply>', re.DOTALL)
+        for xml_match in xml_pattern.findall(self._recv_buf):
+            self._parse_get_now_aying(xml_match)
+        
         pattern = re.compile(r'<base64>(.*?)</base64>', re.DOTALL)
         matches = pattern.findall(self._recv_buf)
         for b64_raw in matches:
@@ -387,6 +444,7 @@ class NaimBridge:
         await self.wake_if_needed()
         await self._send_nvm("*NVM GETPREAMP")
         await self._send_nvm("*NVM GETBRIEFNP")
+        await self._send_xml("GetNowPlaying", self.next_id())
         await asyncio.sleep(1.0)  # Laisse le temps au Naim de répondre avec les métadonnées
         with state_lock:
             return dict(state)
@@ -483,7 +541,7 @@ def route_index():
         sleeping = bridge.should_sleep
     return jsonify({
         "name": "Naim Bridge",
-        "version": "1.5",
+        "version": "1.6",
         "connected": connected,
         "sleeping": sleeping,
     })
@@ -495,7 +553,7 @@ def start_asyncio():
     loop.run_until_complete(bridge.connect())
 
 if __name__ == "__main__":
-    log.info("Naim Bridge v1.5")
+    log.info("Naim Bridge v1.6")
     log.info("Veille apres {}s".format(IDLE_TIMEOUT))
     t = Thread(target=start_asyncio, daemon=True)
     t.start()
