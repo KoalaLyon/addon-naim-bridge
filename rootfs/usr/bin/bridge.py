@@ -347,7 +347,7 @@ class NaimBridge:
         await asyncio.sleep(0.2)
         await self._send_nvm("*NVM GETVIEWSTATE")
         await asyncio.sleep(0.2)
-        await self._send(xml_command("GetNowPlaying", self.next_id()))
+        await self._send(xml_command("GetNowPlaying"))
         await asyncio.sleep(0.2)
         await self._send_nvm("*NVM GETPREAMP")
         await asyncio.sleep(0.2)
@@ -361,7 +361,7 @@ class NaimBridge:
         await asyncio.sleep(0.2)
         await self._send_nvm("*NVM GETPRESETBLK 1 40")
         await asyncio.sleep(0.5)
-        await self._send(xml_command("GetNowPlaying", self.next_id()))
+        await self._send(xml_command("GetNowPlaying")
         await asyncio.sleep(0.3)
 
     async def _receive_loop(self):
@@ -444,7 +444,7 @@ class NaimBridge:
         await self.wake_if_needed()
         await self._send_nvm("*NVM GETPREAMP")
         await self._send_nvm("*NVM GETBRIEFNP")
-        await self._send_xml("GetNowPlaying", self.next_id())
+        await self._send_xml("GetNowPlaying")
         await asyncio.sleep(1.0)  # Laisse le temps au Naim de répondre avec les métadonnées
         with state_lock:
             return dict(state)
