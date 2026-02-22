@@ -337,6 +337,7 @@ class NaimBridge:
                     line = line.strip()
                     if not line:
                         continue
+                    log.info("NVM RAW: {}".format(line))
                     if line.startswith("#NVM PREAMP"):
                         parse_nvm_preamp(line)
                     elif line.startswith("#NVM GETVIEWSTATE"):
@@ -482,7 +483,7 @@ def route_index():
         sleeping = bridge.should_sleep
     return jsonify({
         "name": "Naim Bridge",
-        "version": "1.4",
+        "version": "1.5",
         "connected": connected,
         "sleeping": sleeping,
     })
@@ -494,7 +495,7 @@ def start_asyncio():
     loop.run_until_complete(bridge.connect())
 
 if __name__ == "__main__":
-    log.info("Naim Bridge v1.4")
+    log.info("Naim Bridge v1.5")
     log.info("Veille apres {}s".format(IDLE_TIMEOUT))
     t = Thread(target=start_asyncio, daemon=True)
     t.start()
