@@ -57,6 +57,19 @@ def _find_spotify_device(devices):
             return d
     return None
 
+def spotify_get_artwork():
+    try:
+        sp = get_spotify()
+        playback = sp.current_playback()
+        if playback and playback.get("item"):
+            images = playback["item"]["album"]["images"]
+            if images:
+                # Prend la plus grande image (première de la liste)
+                return images[0]["url"]
+    except Exception as e:
+        log.error("Erreur artwork Spotify: {}".format(e))
+    return None
+
 def spotify_transfer():
     try:
         sp = get_spotify()
@@ -119,6 +132,7 @@ state = {
     "duration": 0,
     "artist": "",
     "album": "",
+    "artwork": "",
 }
 state_lock = Lock()
 
@@ -446,6 +460,16 @@ class NaimBridge:
         await self._send_nvm("*NVM GETBRIEFNP")
         await self._send_xml("GetNowPlaying")
         await asyncio.sleep(1.0)  # Laisse le temps au Naim de répondre avec les métadonnées
+        
+        # Jaquette via Spotify si source active
+        with state_lock:
+            source = state.get("source", "").upper()
+        if source == "SPOTIFY":
+            ev_loop = asyncio.get_event_loop()
+            artwork = await ev_loop.run_in_executor(None, spotify_get_artwork)
+            with state_lock:
+                state["artwork"] = artwork or ""
+        
         with state_lock:
             return dict(state)
 
@@ -541,7 +565,7 @@ def route_index():
         sleeping = bridge.should_sleep
     return jsonify({
         "name": "Naim Bridge",
-        "version": "1.6",
+        "version": "1.7",
         "connected": connected,
         "sleeping": sleeping,
     })
@@ -553,7 +577,7 @@ def start_asyncio():
     loop.run_until_complete(bridge.connect())
 
 if __name__ == "__main__":
-    log.info("Naim Bridge v1.6")
+    log.info("Naim Bridge v1.7")
     log.info("Veille apres {}s".format(IDLE_TIMEOUT))
     t = Thread(target=start_asyncio, daemon=True)
     t.start()
