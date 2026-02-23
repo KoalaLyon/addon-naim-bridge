@@ -68,6 +68,7 @@ def spotify_get_artwork():
         sp = get_spotify()
         log.info("Spotify token:{}".format(sp.auth_manager.get_cached_token()))
         playback = sp.current_playback()
+        log.info("Spotify playback recu: {}".format(playback))
         if playback and playback.get("item"):
             images = playback["item"]["album"]["images"]
             if images:
