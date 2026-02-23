@@ -472,6 +472,7 @@ class NaimBridge:
         with state_lock:
             source = state.get("source", "").upper()
         log.info("Source actuelle: ''".format(source))
+        log.info("State complet: {}".format(dict(state)))
         if source == "SPOTIFY":
             ev_loop = asyncio.get_event_loop()
             artwork = await ev_loop.run_in_executor(None, spotify_get_artwork)
