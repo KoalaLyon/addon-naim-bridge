@@ -36,7 +36,7 @@ logging.basicConfig(
 )
 log = logging.getLogger("naim_bridge")
 
-SPOTIFY_CACHE = "/data/.cache"
+SPOTIFY_CACHE = "/config/.spotify_cache"
 
 def get_spotify():
     log.info("Chargement cache Spotify: {}".format(SPOTIFY_CACHE))
