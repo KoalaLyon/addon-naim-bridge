@@ -477,6 +477,7 @@ class NaimBridge:
         if source == "SPOTIFY":
             ev_loop = asyncio.get_event_loop()
             artwork = await ev_loop.run_in_executor(None, spotify_get_artwork)
+            log.info("Artwork récupéré: {}".format(artwork))
             with state_lock:
                 state["artwork"] = artwork or ""
         
