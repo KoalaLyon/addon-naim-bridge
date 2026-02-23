@@ -39,6 +39,12 @@ log = logging.getLogger("naim_bridge")
 SPOTIFY_CACHE = "/data/.cache"
 
 def get_spotify():
+    log.info("Chargement cache Spotify: {}".format(SPOTIFY_CACHE))
+    import os
+    log.info("Cache existe: {} / contenu: {}".format(
+        os.path.exists(SPOTIFY_CACHE),
+        open(SPOTIFY_CACHE).read() if os.path.exists(SPOTIFY_CACHE) else "ABSENT"
+    ))
     return spotipy.Spotify(auth_manager=SpotifyOAuth(
         client_id=SPOTIFY_CLIENT_ID,
         client_secret=SPOTIFY_CLIENT_SECRET,
@@ -60,6 +66,7 @@ def _find_spotify_device(devices):
 def spotify_get_artwork():
     try:
         sp = get_spotify()
+        log.info("Spotify token:{}".format(sp.auth_manager.get_cached_token()))
         playback = sp.current_playback()
         if playback and playback.get("item"):
             images = playback["item"]["album"]["images"]
