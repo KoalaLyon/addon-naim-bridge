@@ -471,7 +471,7 @@ class NaimBridge:
         # Jaquette via Spotify si source active
         with state_lock:
             source = state.get("source", "").upper()
-        log.info("Source actuelle: ''".format(source))
+        log.info("Source actuelle: '{}'".format(source))
         log.info("State complet: {}".format(dict(state)))
         if source == "SPOTIFY":
             ev_loop = asyncio.get_event_loop()
