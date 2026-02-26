@@ -455,6 +455,9 @@ class NaimBridge:
         await asyncio.sleep(0.3)
 
     async def get_status(self):
+        if self.should_sleep:
+            with state_lock:
+                return dict(state)
         await self.wake_if_needed()
         await self._send_nvm("*NVM GETPREAMP")
         await self._send_nvm("*NVM GETBRIEFNP")
