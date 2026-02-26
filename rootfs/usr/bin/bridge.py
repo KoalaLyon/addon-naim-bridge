@@ -561,6 +561,19 @@ def route_status():
     with state_lock:
         return jsonify(dict(state))
 
+@app.route("/sleep", methods=["POST"])
+def route_sleep():
+    log.info("Mise en veille forcée")
+    bridge.should_sleep = True
+    asyncio.run_coroutine_threadsafe(bridge._disconnect(), loop)
+    return jsonify({"status": "ok"})
+
+@app.route("/wake", methods=["POST"])
+def route_wake():
+    log.info("Réveil forcé")
+    ok = run_coroutine(bridge.wake_if_needed())
+    return jsonify({"status": "ok" if ok else "error"})
+
 @app.route("/", methods=["GET"])
 def route_index():
     with state_lock:
@@ -568,7 +581,7 @@ def route_index():
         sleeping = bridge.should_sleep
     return jsonify({
         "name": "Naim Bridge",
-        "version": "1.7",
+        "version": "1.8",
         "connected": connected,
         "sleeping": sleeping,
     })
@@ -580,7 +593,7 @@ def start_asyncio():
     loop.run_until_complete(bridge.connect())
 
 if __name__ == "__main__":
-    log.info("Naim Bridge v1.7")
+    log.info("Naim Bridge v1.8")
     log.info("Veille apres {}s".format(IDLE_TIMEOUT))
     t = Thread(target=start_asyncio, daemon=True)
     t.start()
