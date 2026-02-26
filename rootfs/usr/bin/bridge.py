@@ -108,7 +108,7 @@ def spotify_play_daylist():
             names = [d.get("name", "?") for d in devices.get("devices", [])]
             log.warning("Appareil '{}' non trouve. Appareils visibles: {}".format(SPOTIFY_DEVICE_NAME, names))
             return False
-        log.info("Lecture Daylist sur Qute")
+        #log.info("Lecture Daylist sur Qute")
         sp.start_playback(
             device_id=target["id"],
             context_uri="spotify:playlist:37i9dQZF1FbGTIl97AXXdm"
@@ -169,7 +169,7 @@ def parse_nvm_preamp(line):
                 state["volume"] = vol
                 state["source"] = src
                 state["mute"] = mute
-            log.info("PREAMP vol={} source={} mute={}".format(vol, src, mute))
+            #log.info("PREAMP vol={} source={} mute={}".format(vol, src, mute))
         except:
             pass
 
@@ -191,7 +191,7 @@ def parse_nvm_briefnp(line):
         with state_lock:
             state["transport"] = transport
             state["title"] = title
-        log.info("Lecture : {} - {}".format(transport, title))
+        #log.info("Lecture : {} - {}".format(transport, title))
 
 class NaimBridge:
     def __init__(self):
@@ -381,7 +381,7 @@ class NaimBridge:
                 if album:
                     state["album"] = album
                 
-            log.info("NowPlaying pos={} dur={} title={} artist={}".format(
+            #log.info("NowPlaying pos={} dur={} title={} artist={}".format(
                 state.get("position"), state.get("duration"), 
                 state.get("title"), state.get("artist")
             ))
@@ -408,7 +408,7 @@ class NaimBridge:
                     line = line.strip()
                     if not line:
                         continue
-                    log.info("NVM RAW: {}".format(line))
+                    #log.info("NVM RAW: {}".format(line))
                     if line.startswith("#NVM PREAMP"):
                         parse_nvm_preamp(line)
                     elif line.startswith("#NVM GETVIEWSTATE"):
@@ -429,28 +429,28 @@ class NaimBridge:
 
     async def set_input(self, source):
         await self.wake_if_needed()
-        log.info("SETINPUT {}".format(source))
+        #log.info("SETINPUT {}".format(source))
         await self._send_nvm("*NVM SETINPUT {}".format(source))
         await asyncio.sleep(1.0)
 
     async def set_volume(self, volume):
         await self.wake_if_needed()
         volume = max(0, min(100, volume))
-        log.info("SETRVOL {}".format(volume))
+        #log.info("SETRVOL {}".format(volume))
         await self._send_nvm("*NVM SETRVOL {}".format(volume))
         await asyncio.sleep(0.3)
 
     async def set_mute(self, mute):
         await self.wake_if_needed()
         value = "ON" if mute else "OFF"
-        log.info("SETMUTE {}".format(value))
+        #log.info("SETMUTE {}".format(value))
         await self._send_nvm("*NVM SETMUTE {}".format(value))
         await asyncio.sleep(0.3)
 
     async def set_pause(self, pause):
         await self.wake_if_needed()
         value = "ON" if pause else "OFF"
-        log.info("PAUSE {}".format(value))
+        #log.info("PAUSE {}".format(value))
         await self._send_nvm("*NVM PAUSE {}".format(value))
         await asyncio.sleep(0.3)
 
@@ -467,12 +467,12 @@ class NaimBridge:
         # Jaquette via Spotify si source active
         with state_lock:
             source = state.get("source", "").upper()
-        log.info("Source actuelle: '{}'".format(source))
-        log.info("State complet: {}".format(dict(state)))
+        #log.info("Source actuelle: '{}'".format(source))
+        #log.info("State complet: {}".format(dict(state)))
         if source == "SPOTIFY":
             ev_loop = asyncio.get_event_loop()
             artwork = await ev_loop.run_in_executor(None, spotify_get_artwork)
-            log.info("Artwork récupéré: {}".format(artwork))
+            #log.info("Artwork récupéré: {}".format(artwork))
             with state_lock:
                 state["artwork"] = artwork or ""
         
@@ -480,13 +480,13 @@ class NaimBridge:
             return dict(state)
 
     async def mode_cinema(self):
-        log.info("MODE CINEMA")
+        #log.info("MODE CINEMA")
         await self.set_mute(False)
         await self.set_input("DIGITAL2")
         await self.set_volume(VOLUME_CINEMA)
 
     async def mode_spotify(self):
-        log.info("MODE SPOTIFY")
+        #log.info("MODE SPOTIFY")
         await self.set_mute(False)
         await self.set_input("SPOTIFY")
         await self.set_volume(VOLUME_SPOTIFY)
@@ -496,7 +496,7 @@ class NaimBridge:
         await ev_loop.run_in_executor(None, spotify_transfer)
 
     async def mode_spotify_daylist(self):
-        log.info("MODE DAYLIST")
+        #log.info("MODE DAYLIST")
         await self.set_mute(False)
         await self.set_input("SPOTIFY")
         await self.set_volume(VOLUME_SPOTIFY)
@@ -584,7 +584,7 @@ def route_index():
         sleeping = bridge.should_sleep
     return jsonify({
         "name": "Naim Bridge",
-        "version": "1.8",
+        "version": "2.0",
         "connected": connected,
         "sleeping": sleeping,
     })
@@ -596,7 +596,7 @@ def start_asyncio():
     loop.run_until_complete(bridge.connect())
 
 if __name__ == "__main__":
-    log.info("Naim Bridge v1.8")
+    log.info("Naim Bridge v2.0")
     log.info("Veille apres {}s".format(IDLE_TIMEOUT))
     t = Thread(target=start_asyncio, daemon=True)
     t.start()
