@@ -384,7 +384,7 @@ class NaimBridge:
             #log.info("NowPlaying pos={} dur={} title={} artist={}".format(
                 state.get("position"), state.get("duration"), 
                 state.get("title"), state.get("artist")
-            ))
+                
         except Exception as e:
             log.error("Erreur parse GetNowPlaying: {}".format(e))
         
