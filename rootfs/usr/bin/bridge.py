@@ -97,13 +97,18 @@ def spotify_transfer():
 def spotify_get_daylist_uri():
     try:
         sp = get_spotify()
-        # Cherche la Daylist dans les playlists de l'utilisateur
-        playlists = sp.current_user_playlists(limit=50)
-        for playlist in playlists['items']:
-            if playlist['name'].lower().startswith('daylist'):
-                return playlist['uri']
+        token = sp.auth_manager.get_cached_token()['access_token']
+        import urllib.request
+        req = urllib.request.Request(
+            'https://api.spotify.com/v1/views/daylist',
+            headers={'Authorization': 'Bearer {}'.format(token)}
+        )
+        import json
+        with urllib.request.urlopen(req) as r:
+            data = json.loads(r.read())
+            return data['items'][0]['item']['uri']
     except Exception as e:
-        log.error("Erreur récupération Daylist URI: {}".format(e))
+        log.error("Erreur Daylist URI: {}".format(e))
     return None
 
 def spotify_play_daylist():
