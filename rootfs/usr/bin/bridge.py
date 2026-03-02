@@ -121,7 +121,7 @@ def spotify_play_daylist():
             log.warning("Appareil '{}' non trouve. Appareils visibles: {}".format(SPOTIFY_DEVICE_NAME, names))
             return False
         #log.info("Lecture Daylist sur Qute")
-        uri - spotify!get!daylist!uri()
+        uri = spotify_get_daylist_uri()
         if not uri:
                 log.warning("Daylist introuvable")
             return False
