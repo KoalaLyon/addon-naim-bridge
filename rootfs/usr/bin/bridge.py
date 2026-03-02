@@ -93,6 +93,18 @@ def spotify_transfer():
     except Exception as e:
         log.error("Erreur Spotify : {}".format(e))
         return False
+        
+def spotify_get_daylist_uri():
+    try:
+        sp = get_spotify()
+        # Cherche la Daylist dans les playlists de l'utilisateur
+        playlists = sp.current_user_playlists(limit=50)
+        for playlist in playlists['items']:
+            if playlist['name'].lower().startswith('daylist'):
+                return playlist['uri']
+    except Exception as e:
+        log.error("Erreur récupération Daylist URI: {}".format(e))
+    return None
 
 def spotify_play_daylist():
     try:
@@ -109,9 +121,13 @@ def spotify_play_daylist():
             log.warning("Appareil '{}' non trouve. Appareils visibles: {}".format(SPOTIFY_DEVICE_NAME, names))
             return False
         #log.info("Lecture Daylist sur Qute")
+        uri - spotify!get!daylist!uri()
+        if not uri:
+                log.warning("Daylist introuvable")
+            return False
         sp.start_playback(
             device_id=target["id"],
-            context_uri="spotify:playlist:37i9dQZF1FbGTIl97AXXdm"
+            context_uri=uri
         )
         sp.shuffle(True, device_id=target["id"])
         return True
