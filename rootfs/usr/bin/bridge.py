@@ -123,7 +123,7 @@ def spotify_play_daylist():
         #log.info("Lecture Daylist sur Qute")
         uri = spotify_get_daylist_uri()
         if not uri:
-                log.warning("Daylist introuvable")
+            log.warning("Daylist introuvable")
             return False
         sp.start_playback(
             device_id=target["id"],
