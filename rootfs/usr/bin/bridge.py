@@ -22,13 +22,14 @@ BRIDGE_HOST = "0.0.0.0"
 BRIDGE_PORT = 8765
 VOLUME_CINEMA = int(os.getenv('VOLUME_CINEMA', 45))
 VOLUME_SPOTIFY = int(os.getenv('VOLUME_SPOTIFY', 30))
+VOLUME_CHILL = int(os.getenv('VOLUME_CHILL', 23))
 HEARTBEAT_INTERVAL = 10
 RECONNECT_DELAY = 5
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID', '')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET', '')
 SPOTIFY_REDIRECT_URI = "http://127.0.0.1:8888/callback"
 SPOTIFY_DEVICE_NAME = os.getenv('SPOTIFY_DEVICE_NAME', 'Qute')
-IDLE_TIMEOUT = 300
+CHILL_URI = os.getenv('CHILL_URI', 'spotify:playlist:1otDkfbxOhnJlH6KL27Poj')
 
 logging.basicConfig(
     level=logging.INFO,
@@ -111,7 +112,7 @@ def spotify_get_daylist_uri():
         log.error("Erreur Daylist URI: {}".format(e))
     return None
 
-def spotify_play_daylist():
+def spotify_play_playlist(uri):
     try:
         sp = get_spotify()
         for attempt in range(3):
@@ -122,22 +123,12 @@ def spotify_play_daylist():
             if attempt < 2:
                 time.sleep(2)
         if not target:
-            names = [d.get("name", "?") for d in devices.get("devices", [])]
-            log.warning("Appareil '{}' non trouve. Appareils visibles: {}".format(SPOTIFY_DEVICE_NAME, names))
             return False
-        #log.info("Lecture Daylist sur Qute")
-        uri = spotify_get_daylist_uri()
-        if not uri:
-            log.warning("Daylist introuvable")
-            return False
-        sp.start_playback(
-            device_id=target["id"],
-            context_uri=uri
-        )
+        sp.start_playback(device_id=target["id"], context_uri=uri)
         sp.shuffle(True, device_id=target["id"])
         return True
     except Exception as e:
-        log.error("Erreur Daylist : {}".format(e))
+        log.error("Erreur playlist : {}".format(e))
         return False
 
 state = {
@@ -516,15 +507,14 @@ class NaimBridge:
         ev_loop = asyncio.get_event_loop()
         await ev_loop.run_in_executor(None, spotify_transfer)
 
-    async def mode_spotify_daylist(self):
-        #log.info("MODE DAYLIST")
+    async def mode_chill(self):
+        log.info("MODE CHILL")
         await self.set_mute(False)
         await self.set_input("SPOTIFY")
-        await self.set_volume(VOLUME_SPOTIFY)
+        await self.set_volume(VOLUME_CHILL)
         await asyncio.sleep(5)
         ev_loop = asyncio.get_event_loop()
-        await ev_loop.run_in_executor(None, spotify_play_daylist)
-
+        await ev_loop.run_in_executor(None, lambda: spotify_play_playlist(CHILL_URI))
 
 bridge = NaimBridge()
 app = Flask(__name__)
@@ -549,9 +539,9 @@ def route_spotify():
     ok = run_coroutine(bridge.mode_spotify())
     return jsonify({"status": "ok" if ok else "error"})
 
-@app.route("/spotify/daylist", methods=["POST"])
-def route_spotify_daylist():
-    ok = run_coroutine(bridge.mode_spotify_daylist())
+@app.route("/chill", methods=["POST"])
+def route_chill():
+    ok = run_coroutine(bridge.mode_chill())
     return jsonify({"status": "ok" if ok else "error"})
 
 @app.route("/volume/<int:volume>", methods=["POST"])
@@ -605,7 +595,7 @@ def route_index():
         sleeping = bridge.should_sleep
     return jsonify({
         "name": "Naim Bridge",
-        "version": "2.0",
+        "version": "2.1",
         "connected": connected,
         "sleeping": sleeping,
     })
@@ -617,7 +607,7 @@ def start_asyncio():
     loop.run_until_complete(bridge.connect())
 
 if __name__ == "__main__":
-    log.info("Naim Bridge v2.0")
+    log.info("Naim Bridge v2.1")
     log.info("Veille apres {}s".format(IDLE_TIMEOUT))
     t = Thread(target=start_asyncio, daemon=True)
     t.start()
