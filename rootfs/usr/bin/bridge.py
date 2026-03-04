@@ -30,6 +30,7 @@ SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET', '')
 SPOTIFY_REDIRECT_URI = "http://127.0.0.1:8888/callback"
 SPOTIFY_DEVICE_NAME = os.getenv('SPOTIFY_DEVICE_NAME', 'Qute')
 CHILL_URI = os.getenv('CHILL_URI', 'spotify:playlist:1otDkfbxOhnJlH6KL27Poj')
+IDLE_TIMEOUT = 300
 
 logging.basicConfig(
     level=logging.INFO,
