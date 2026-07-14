@@ -1,5 +1,5 @@
 ---
-version: "1.4.7.9.5"
+version: "1.4.8"
 slug: naim_bridge
 name: Naim Bridge
 description: Bridge TCP pour Naim UnitiQute 2
@@ -17,6 +17,7 @@ map:
   - config:rw
 options:
   qute_ip: "192.168.1.108"
+  bridge_ip: "192.168.1.101"
   volume_cinema: 45
   volume_spotify: 30
   volume_chill: 23
