@@ -12,12 +12,13 @@ import os
 from threading import Thread, Event, Lock
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 import xml.etree.ElementTree as ET
 
 # Configuration depuis variables d'environnement
 QUTE_IP = os.getenv('QUTE_IP', '192.168.1.108')
 QUTE_PORT = 15555
+BRIDGE_IP = os.getenv('BRIDGE_IP', '192.168.1.101')
 BRIDGE_HOST = "0.0.0.0"
 BRIDGE_PORT = 8765
 VOLUME_CINEMA = int(os.getenv('VOLUME_CINEMA', 45))
@@ -27,7 +28,7 @@ HEARTBEAT_INTERVAL = 10
 RECONNECT_DELAY = 5
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID', '')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET', '')
-SPOTIFY_REDIRECT_URI = "http://127.0.0.1:8888/callback"
+SPOTIFY_REDIRECT_URI = "http://{}:8765/spotify/callback".format(BRIDGE_IP)
 SPOTIFY_DEVICE_NAME = os.getenv('SPOTIFY_DEVICE_NAME', 'Qute')
 CHILL_URI = os.getenv('CHILL_URI', 'spotify:playlist:1otDkfbxOhnJlH6KL27Poj')
 IDLE_TIMEOUT = 300
@@ -41,15 +42,30 @@ log = logging.getLogger("naim_bridge")
 SPOTIFY_CACHE = "/config/.spotify_cache"
 
 def get_spotify():
-    return spotipy.Spotify(auth_manager=SpotifyOAuth(
+    """Retourne un client Spotipy authentifié."""
+    from spotipy.cache_handler import CacheFileHandler
+    auth_manager = SpotifyOAuth(
         client_id=SPOTIFY_CLIENT_ID,
         client_secret=SPOTIFY_CLIENT_SECRET,
         redirect_uri=SPOTIFY_REDIRECT_URI,
         scope="user-read-playback-state user-modify-playback-state",
-        cache_path=SPOTIFY_CACHE,
+        cache_handler=CacheFileHandler(cache_path=SPOTIFY_CACHE),
         open_browser=False,
-    ))
+    )
+    return spotipy.Spotify(auth_manager=auth_manager)
 
+def get_spotify_auth_manager():
+    """Retourne l'auth manager Spotipy."""
+    from spotipy.cache_handler import CacheFileHandler
+    return SpotifyOAuth(
+        client_id=SPOTIFY_CLIENT_ID,
+        client_secret=SPOTIFY_CLIENT_SECRET,
+        redirect_uri=SPOTIFY_REDIRECT_URI,
+        scope="user-read-playback-state user-modify-playback-state",
+        cache_handler=CacheFileHandler(cache_path=SPOTIFY_CACHE),
+        open_browser=False,
+    )
+    
 def _find_spotify_device(devices):
     """Trouve le Qute dans la liste Spotify (match exact ou partiel)."""
     config_name = SPOTIFY_DEVICE_NAME.lower()
@@ -71,26 +87,29 @@ def spotify_get_artwork():
     except Exception as e:
         log.error("Erreur artwork Spotify: {}".format(e))
     return None
-
+    
 def spotify_transfer():
     try:
         sp = get_spotify()
-        for attempt in range(3):
-            devices = sp.devices()
-            target = _find_spotify_device(devices)
-            if target:
-                log.info("Transfert Spotify vers '{}'".format(target["name"]))
-                sp.transfer_playback(device_id=target["id"], force_play=True)
-                try:
-                    sp.start_playback(device_id=target["id"])
-                except Exception:
-                    pass
-                return True
-            if attempt < 2:
-                log.info("Qute pas encore visible (tentative {}/3), nouvel essai dans 2s...".format(attempt + 1))
-                time.sleep(2)
-        names = [d.get("name", "?") for d in devices.get("devices", [])]
-        log.warning("Appareil '{}' non trouve. Appareils visibles: {}".format(SPOTIFY_DEVICE_NAME, names))
+        devices = sp.devices()
+        target = None
+        for d in devices["devices"]:
+            if d["name"].lower() == SPOTIFY_DEVICE_NAME.lower():
+                target = d
+                break
+        if not target:
+            log.warning("Appareil Spotify non trouve")
+            return False
+        log.info("Transfert Spotify vers '{}'".format(target["name"]))
+        sp.transfer_playback(device_id=target["id"], force_play=True)
+        return True
+    except spotipy.SpotifyException as e:
+        if "invalid_grant" in str(e):
+            log.error("TOKEN SPOTIFY EXPIRE — Reauthorisation requise : GET /spotify/auth")
+            with state_lock:
+                state["spotify_auth_required"] = True
+        else:
+            log.error("Erreur Spotify : {}".format(e))
         return False
     except Exception as e:
         log.error("Erreur Spotify : {}".format(e))
@@ -112,24 +131,36 @@ def spotify_get_daylist_uri():
     except Exception as e:
         log.error("Erreur Daylist URI: {}".format(e))
     return None
-
-def spotify_play_playlist(uri):
+    
+def spotify_play_daylist():
     try:
         sp = get_spotify()
-        for attempt in range(3):
-            devices = sp.devices()
-            target = _find_spotify_device(devices)
-            if target:
+        devices = sp.devices()
+        target = None
+        for d in devices["devices"]:
+            if d["name"].lower() == SPOTIFY_DEVICE_NAME.lower():
+                target = d
                 break
-            if attempt < 2:
-                time.sleep(2)
         if not target:
+            log.warning("Appareil Spotify non trouve")
             return False
-        sp.start_playback(device_id=target["id"], context_uri=uri)
+        log.info("Lecture Daylist sur Qute")
+        sp.start_playback(
+            device_id=target["id"],
+            context_uri="spotify:playlist:37i9dQZF1FbGTIl97AXXdm"
+        )
         sp.shuffle(True, device_id=target["id"])
         return True
+    except spotipy.SpotifyException as e:
+        if "invalid_grant" in str(e):
+            log.error("TOKEN SPOTIFY EXPIRE — Reauthorisation requise : GET /spotify/auth")
+            with state_lock:
+                state["spotify_auth_required"] = True
+        else:
+            log.error("Erreur Spotify : {}".format(e))
+        return False
     except Exception as e:
-        log.error("Erreur playlist : {}".format(e))
+        log.error("Erreur Spotify : {}".format(e))
         return False
 
 state = {
@@ -146,6 +177,7 @@ state = {
     "artist": "",
     "album": "",
     "artwork": "",
+    "spotify_auth_required": False,
 }
 state_lock = Lock()
 
@@ -601,6 +633,72 @@ def route_index():
         "sleeping": sleeping,
     })
 
+@app.route("/spotify/auth", methods=["GET"])
+def route_spotify_auth():
+    """Retourne l'URL d'autorisation Spotify."""
+    try:
+        auth_manager = get_spotify_auth_manager()
+        auth_url = auth_manager.get_authorize_url()
+        log.info("Auth URL generee : {}".format(auth_url))
+        # Retourne une page HTML simple avec le lien
+        return '''
+        <html>
+        <body style="font-family: sans-serif; padding: 40px; text-align: center;">
+            <h2>Naim Bridge — Autorisation Spotify</h2>
+            <p>Cliquez sur le bouton pour autoriser l'accès à votre compte Spotify :</p>
+            <a href="{}" style="
+                display: inline-block;
+                padding: 15px 30px;
+                background: #1DB954;
+                color: white;
+                text-decoration: none;
+                border-radius: 25px;
+                font-size: 16px;
+                font-weight: bold;
+            ">Autoriser sur Spotify</a>
+        </body>
+        </html>
+        '''.format(auth_url)
+    except Exception as e:
+        log.error("Erreur auth URL : {}".format(e))
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/spotify/callback", methods=["GET"])
+def route_spotify_callback():
+    """Capture le callback OAuth Spotify et sauvegarde le token."""
+    try:
+        code = request.args.get("code")
+        error = request.args.get("error")
+
+        if error:
+            log.error("Erreur OAuth Spotify : {}".format(error))
+            return '''
+            <html><body style="font-family: sans-serif; padding: 40px; text-align: center;">
+                <h2>❌ Erreur d'autorisation</h2>
+                <p>{}</p>
+            </body></html>
+            '''.format(error)
+
+        if not code:
+            return jsonify({"error": "Code manquant"}), 400
+
+        auth_manager = get_spotify_auth_manager()
+        token_info = auth_manager.exchange_code_for_token(code)
+        log.info("Token Spotify sauvegardé avec succès !")
+        
+        with state_lock:
+            state["spotify_auth_required"] = False
+
+        return '''
+        <html><body style="font-family: sans-serif; padding: 40px; text-align: center;">
+            <h2>✅ Autorisation Spotify réussie !</h2>
+            <p>Le token a été sauvegardé. Vous pouvez fermer cette fenêtre.</p>
+        </body></html>
+        '''
+    except Exception as e:
+        log.error("Erreur callback OAuth : {}".format(e))
+        return jsonify({"error": str(e)}), 500
+
 loop = asyncio.new_event_loop()
 
 def start_asyncio():
@@ -608,7 +706,7 @@ def start_asyncio():
     loop.run_until_complete(bridge.connect())
 
 if __name__ == "__main__":
-    log.info("Naim Bridge v2.1")
+    log.info("Naim Bridge v2.2")
     log.info("Veille apres {}s".format(IDLE_TIMEOUT))
     t = Thread(target=start_asyncio, daemon=True)
     t.start()
