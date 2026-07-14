@@ -1,5 +1,5 @@
 ---
-version: "1.4.8.0.0"
+version: "1.5.0"
 slug: naim_bridge
 name: Naim Bridge
 description: Bridge TCP pour Naim UnitiQute 2
