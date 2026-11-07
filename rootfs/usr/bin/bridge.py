@@ -28,7 +28,7 @@ HEARTBEAT_INTERVAL = 10
 RECONNECT_DELAY = 5
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID', '')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET', '')
-SPOTIFY_REDIRECT_URI = "http://{}:8765/spotify/callback".format(BRIDGE_IP)
+SPOTIFY_REDIRECT_URI = "http://127.0.0.1:8888/callback"
 SPOTIFY_DEVICE_NAME = os.getenv('SPOTIFY_DEVICE_NAME', 'Qute')
 CHILL_URI = os.getenv('CHILL_URI', 'spotify:playlist:1otDkfbxOhnJlH6KL27Poj')
 IDLE_TIMEOUT = 300
@@ -662,7 +662,26 @@ def route_spotify_auth():
     except Exception as e:
         log.error("Erreur auth URL : {}".format(e))
         return jsonify({"error": str(e)}), 500
-
+        
+@app.route("/spotify/paste", methods=["GET", "POST"])
+def route_spotify_paste():
+    if request.method == "POST":
+        try:
+            am = get_spotify_auth_manager()
+            code = am.parse_response_code(request.form.get("url", "").strip())
+            am.get_access_token(code, as_dict=False, check_cache=False)
+            with state_lock:
+                state["spotify_auth_required"] = False
+            log.info("Token Spotify sauvegarde")
+            return "<h2>✅ Autorisation réussie</h2>"
+        except Exception as e:
+            log.error("Erreur paste OAuth : {}".format(e))
+            return "<h2>❌ {}</h2>".format(e), 500
+    return '''<form method="post" style="font-family:sans-serif;padding:24px">
+      <h3>Collez l'URL complète de la page en erreur (127.0.0.1:8888/callback?code=...)</h3>
+      <input name="url" style="width:100%;padding:10px"><br><br>
+      <button style="padding:10px 20px">Valider</button></form>'''
+    
 @app.route("/spotify/callback", methods=["GET"])
 def route_spotify_callback():
     """Capture le callback OAuth Spotify et sauvegarde le token."""
